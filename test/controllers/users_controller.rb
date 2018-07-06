@@ -6,7 +6,7 @@ class UsersController < UserstampController
 
   def update
     @user = User.find(params[:id])
-    @user.update_attributes(params[:user])
+    @user.update_attributes(params.require(:user).permit(:name))
     render(:inline => "<%= @user.name %>")
   end
 end
