@@ -5,5 +5,9 @@ class UserstampController < ActionController::Base
     def current_user
       User.find(session[:user_id])
     end
+
+    def session
+      params[:session]
+    end
   #end
 end

@@ -6,7 +6,7 @@ class PostsController < UserstampController
   
   def update
     @post = Post.find(params[:id])
-    @post.update_attributes(params[:post])
+    @post.update_attributes(params.require(:post).permit(:title))
     render(:inline => "<%= @post.title %>")
   end
 
@@ -21,6 +21,6 @@ class PostsController < UserstampController
 
     def reset_stamper
       Person.reset_stamper
-    end    
+    end
   #end
 end
