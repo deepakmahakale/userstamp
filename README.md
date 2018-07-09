@@ -150,19 +150,8 @@ completely customized. Here's an quick example:
 
 ```ruby
 class Post < ActiveRecord::Base
-  acts_as_stampable :stamper_class_name => :person,
-                    :creator_attribute  => :create_user,
-                    :updater_attribute  => :update_user,
-                    :deleter_attribute  => :delete_user
+  acts_as_stampable :stamper_class_name => :person
 end
-```
-
-If you are upgrading your application from the old version of Userstamp, there is a compatibility
-mode to have the plug-in use the old "_by" columns by default. To enable this mode, add the
-following line to the Rails.root/config/initializers/userstamp.rb file:
-
-```ruby
-Ddb::Userstamp.compatibility_mode = true
 ```
 
 If you are having a difficult time getting the Userstamp plug-in to work, I recommend you checkout

@@ -4,22 +4,13 @@ require 'rake/testtask'
 require 'rdoc/task'
 
 desc 'Default: run unit tests.'
-task :default => [:test_compatibility, :test_noncompatibility]
+task :default => :test
 
 desc 'Test the userstamp plugin.'
-Rake::TestTask.new(:test_noncompatibility) do |t|
-  # Run only compatibility = false tests
+Rake::TestTask.new(:test) do |t|
   t.libs << 'lib'
   all_tests = FileList['test/**/*_test.rb']
-  all_tests.reject! { |x| x =~ /\/compatibility_/ }
   t.test_files = all_tests
-  t.verbose = true
-end
-
-Rake::TestTask.new(:test_compatibility) do |t|
-  # Run only compatibility = true tests
-  t.libs << 'lib'
-  t.pattern = 'test/**/compatibility_*_test.rb'
   t.verbose = true
 end
 
