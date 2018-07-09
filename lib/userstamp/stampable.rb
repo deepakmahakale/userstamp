@@ -1,3 +1,5 @@
+require 'ostruct'
+
 module Ddb #:nodoc:
   module Userstamp
     # Determines what default columns to use for recording the current stamper.
@@ -37,15 +39,19 @@ module Ddb #:nodoc:
           # Defaults to :created_by when compatibility mode is on
           class_attribute  :creator_attribute
 
+          class_attribute  :creator_association
+
           # What column should be used for the updater stamp?
           # Defaults to :updater_id when compatibility mode is off
           # Defaults to :updated_by when compatibility mode is on
           class_attribute  :updater_attribute
+          class_attribute  :updater_association
 
           # What column should be used for the deleter stamp?
           # Defaults to :deleter_id when compatibility mode is off
           # Defaults to :deleted_by when compatibility mode is on
           class_attribute  :deleter_attribute
+          class_attribute  :deleter_association
 
           # Not all models in Enterprise have userstamps
           # self.stampable
@@ -58,10 +64,7 @@ module Ddb #:nodoc:
         # method to use. Here's an example:
         #
         #   class Post < ActiveRecord::Base
-        #     stampable :stamper_class_name => :person,
-        #               :creator_attribute  => :create_user,
-        #               :updater_attribute  => :update_user,
-        #               :deleter_attribute  => :delete_user
+        #     stampable :stamper_class_name => :person
         #   end
         #
         # The method will automatically setup all the associations, and create <tt>before_save</tt>
@@ -69,29 +72,28 @@ module Ddb #:nodoc:
         def stampable(options = {})
           defaults  = {
                         :stamper_class_name => :user,
-                        :creator_attribute  => Ddb::Userstamp.compatibility_mode ? :created_by : :creator_id,
-                        :updater_attribute  => Ddb::Userstamp.compatibility_mode ? :updated_by : :updater_id,
-                        :deleter_attribute  => Ddb::Userstamp.compatibility_mode ? :deleted_by : :deleter_id
                       }.merge(options)
 
           self.stamper_class_name = defaults[:stamper_class_name].to_sym
-          self.creator_attribute  = defaults[:creator_attribute].to_sym
-          self.updater_attribute  = defaults[:updater_attribute].to_sym
-          self.deleter_attribute  = defaults[:deleter_attribute].to_sym
 
           class_eval do
-            belongs_to :creator, :class_name => self.stamper_class_name.to_s.singularize.camelize,
-                                 :foreign_key => self.creator_attribute
-                                 
-            belongs_to :updater, :class_name => self.stamper_class_name.to_s.singularize.camelize,
-                                 :foreign_key => self.updater_attribute
-                                 
+            belongs_to :created_by, :class_name => self.stamper_class_name.to_s.singularize.camelize,
+                                    :foreign_key => :created_by_id
+            alias_method :creator, :created_by
+            alias_method :creator=, :created_by=
+
+            belongs_to :updated_by, :class_name => self.stamper_class_name.to_s.singularize.camelize,
+                                    :foreign_key => :updated_by_id
+            alias_method :updater, :updated_by
+            alias_method :updater=, :updated_by=
+
             before_save     :set_updater_attribute
             before_create   :set_creator_attribute
-                                 
+
             if defined?(Caboose::Acts::Paranoid)
-              belongs_to :deleter, :class_name => self.stamper_class_name.to_s.singularize.camelize,
-                                   :foreign_key => self.deleter_attribute
+              belongs_to :deleted_by, :class_name => self.stamper_class_name.to_s.singularize.camelize,
+                                      :foreign_key => :deleted_by_id
+              alias_method :deleter, :deleted_by
               before_destroy  :set_deleter_attribute
             end
           end
@@ -123,25 +125,38 @@ module Ddb #:nodoc:
           end
 
           def set_creator_attribute
-            return unless self.record_userstamp
-            if self.creator_attribute && respond_to?(self.creator_attribute.to_sym) && has_stamper?
-              self.send("#{self.creator_attribute}=".to_sym, self.class.stamper_class.stamper)
-            end
+            apply_stamper(:created_by, :created_by_id)
           end
 
           def set_updater_attribute
-            return unless self.record_userstamp
-            if self.updater_attribute && respond_to?(self.updater_attribute.to_sym) && has_stamper?
-              self.send("#{self.updater_attribute}=".to_sym, self.class.stamper_class.stamper)
-            end
+            apply_stamper(:updated_by, :updated_by_id)
           end
 
           def set_deleter_attribute
-            return unless self.record_userstamp
-            if self.deleter_attribute && respond_to?(self.deleter_attribute.to_sym) && has_stamper?
-              self.send("#{self.deleter_attribute}=".to_sym, self.class.stamper_class.stamper)
+            if apply_stamper(:deleted_by, :deleted_by_id)
               save
             end
+          end
+
+          # Returns true if stampler applied, else nil
+          def apply_stamper(association, attribute)
+            return nil unless self.record_userstamp
+            if has_stamper?
+              stamper_class = self.class.stamper_class
+              stamper = stamper_class.stamper
+              setter = if stamper.is_a?(stamper_class)
+                association
+              else
+                attribute
+              end
+
+              if self.respond_to?(setter)
+                self.send("#{setter}=", stamper)
+                return true
+              end
+            end
+
+            return nil
           end
         #end private
       end
