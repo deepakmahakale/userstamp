@@ -141,7 +141,7 @@ module Ddb #:nodoc:
           # Returns true if stampler applied, else nil
           def apply_stamper(association, attribute)
             return nil unless self.record_userstamp
-            if has_stamper?
+            if has_stamper? && self.respond_to?(attribute)
               stamper_class = self.class.stamper_class
               stamper = stamper_class.stamper
               setter = if stamper.is_a?(stamper_class)
