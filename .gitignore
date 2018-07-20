@@ -1,6 +1,8 @@
 *.gem
 .bundle
+.byebug_history
 Gemfile.lock
 pkg/*
 *.log
 *.sqlite3
+*.xcodeproj

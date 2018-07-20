@@ -4,15 +4,20 @@ schema_file = File.join(File.dirname(__FILE__), '..', 'schema.rb')
 ENV["RAILS_ENV"] = "test"
 require 'rubygems'
 require 'test/unit'
-require 'active_support'
-require 'active_support/test_case'
-require 'active_record'
-require 'active_record/fixtures'
 require 'action_controller'
 require 'action_controller/test_case'
-require 'action_controller/test_process'
-require 'action_controller/integration'
-require 'init'
+require 'action_dispatch/testing/integration'
+require 'active_record'
+require 'active_record/fixtures'
+require 'active_support/test_case'
+require 'active_support/testing/autorun'
+
+require 'rails'
+require 'rails-controller-testing'
+
+require 'userstamp'
+
+Rails::Controller::Testing.install
 
 config = YAML::load(IO.read(File.join(File.dirname(__FILE__), '..', 'database.yml')))[ENV['DB'] || 'test']
 ActiveRecord::Base.configurations = config
@@ -23,12 +28,20 @@ ActionController::Base.logger = Logger.new(File.dirname(__FILE__) + "/controller
 
 load(schema_file) if File.exist?(schema_file)
 
-Test::Unit::TestCase.fixture_path = File.join(File.dirname(__FILE__), '..', 'fixtures')
-$:.unshift(Test::Unit::TestCase.fixture_path)
+Rails.logger = Logger.new(STDOUT)
 
-class Test::Unit::TestCase
-  # Turn off transactional fixtures if you're working with MyISAM tables in MySQL
-  self.use_transactional_fixtures = true
+class TestApplication < Rails::Application
+end
+
+TestApplication.initialize!
+
+class ActiveSupport::TestCase #:nodoc:
+  include ::ActiveRecord::TestFixtures
+
+  self.fixture_path = File.join(File.dirname(__FILE__), '..', 'fixtures')
+
+  # Setup all fixtures in test/fixtures/*.yml for all tests in alphabetical order.
+  fixtures :all
 
   # Instantiated fixtures are slow, but give you @david where you otherwise would need people(:david)
   self.use_instantiated_fixtures  = true
