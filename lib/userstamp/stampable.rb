@@ -84,22 +84,21 @@ module Ddb #:nodoc:
                                     :foreign_key => self.creator_attribute
             alias_method :creator,  :created_by
             alias_method :creator=, :created_by=
+            before_create :userstamp_set_creator_attribute
 
             # updated_by
             belongs_to :updated_by, :class_name => self.stamper_class_name.to_s.singularize.camelize,
                                     :foreign_key => self.updater_attribute
             alias_method :updater,  :updated_by
             alias_method :updater=, :updated_by=
-
-            before_save     :set_updater_attribute
-            before_create   :set_creator_attribute
+            before_save :userstamp_set_updater_attribute
 
             if defined?(Caboose::Acts::Paranoid)
               belongs_to :deleted_by, :class_name => self.stamper_class_name.to_s.singularize.camelize,
                                       :foreign_key => self.deleter_attribute
               alias_method :deleter,  :deleted_by
               alias_method :deleter=, :deleted_by=
-              before_destroy  :set_deleter_attribute
+              before_destroy :userstamp_set_deleter_attribute
             end
           end
         end
@@ -129,27 +128,39 @@ module Ddb #:nodoc:
             !self.class.stamper_class.nil? && !self.class.stamper_class.stamper.nil? rescue false
           end
 
-          def set_creator_attribute
-            return unless self.record_userstamp
-            if self.creator_attribute && respond_to?(self.creator_attribute.to_sym) && has_stamper?
-              self.send("#{self.creator_attribute}=".to_sym, self.class.stamper_class.stamper)
+          def userstamp_set_creator_attribute
+            userstamp_apply_stamper(:created_by, self.creator_attribute)
+          end
+
+          def userstamp_set_updater_attribute
+            userstamp_apply_stamper(:updated_by, self.updater_attribute)
+          end
+
+          def userstamp_set_deleter_attribute
+            userstamp_apply_stamper(:deleted_by, self.deleter_attribute)
+            save
+          end
+
+          # Returns true if stampler applied, else nil
+          def userstamp_apply_stamper(association, attribute)
+            # Do nothing if the attribute does not exist in the table or
+            # we are not recording userstamps.
+            return nil if !self.record_userstamp || !self.class.columns_hash.has_key?(attribute.to_s)
+
+            if userstamp_has_stamper?
+              stamper_class = self.class.stamper_class
+              stamper = stamper_class.stamper
+              setter = if stamper.is_a?(stamper_class)
+                association
+              else
+                attribute
+              end
+
+              self.send("#{setter}=", stamper)
+              true   # Return true to indicate we set the stamper
             end
           end
 
-          def set_updater_attribute
-            return unless self.record_userstamp
-            if self.updater_attribute && respond_to?(self.updater_attribute.to_sym) && has_stamper?
-              self.send("#{self.updater_attribute}=".to_sym, self.class.stamper_class.stamper)
-            end
-          end
-
-          def set_deleter_attribute
-            return unless self.record_userstamp
-            if self.deleter_attribute && respond_to?(self.deleter_attribute.to_sym) && has_stamper?
-              self.send("#{self.deleter_attribute}=".to_sym, self.class.stamper_class.stamper)
-              save
-            end
-          end
         #end private
       end
     end
