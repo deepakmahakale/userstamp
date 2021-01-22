@@ -80,24 +80,24 @@ module Ddb #:nodoc:
 
           class_eval do
             # created_by
-            belongs_to :userstamp_creator, :class_name => self.stamper_class_name.to_s.singularize.camelize,
+            belongs_to :creator, :class_name => self.stamper_class_name.to_s.singularize.camelize,
                                     :foreign_key => self.creator_attribute
-            alias_method :creator,  :userstamp_creator
-            alias_method :creator=, :userstamp_creator=
+            # alias_method :creator,  :userstamp_creator
+            # alias_method :creator=, :userstamp_creator=
             before_create :userstamp_set_creator_attribute
 
             # updated_by
-            belongs_to :userstamp_updater, :class_name => self.stamper_class_name.to_s.singularize.camelize,
+            belongs_to :updater, :class_name => self.stamper_class_name.to_s.singularize.camelize,
                                     :foreign_key => self.updater_attribute
-            alias_method :updater,  :userstamp_updater
-            alias_method :updater=, :userstamp_updater=
+            # alias_method :updater,  :userstamp_updater
+            # alias_method :updater=, :userstamp_updater=
             before_save :userstamp_set_updater_attribute
 
             if defined?(Caboose::Acts::Paranoid)
-              belongs_to :userstamp_deleter, :class_name => self.stamper_class_name.to_s.singularize.camelize,
+              belongs_to :deleter, :class_name => self.stamper_class_name.to_s.singularize.camelize,
                                       :foreign_key => self.deleter_attribute
-              alias_method :deleter,  :userstamp_deleter
-              alias_method :deleter=, :userstamp_deleter=
+              # alias_method :deleter,  :userstamp_deleter
+              # alias_method :deleter=, :userstamp_deleter=
               before_destroy :userstamp_set_deleter_attribute
             end
           end
@@ -129,15 +129,15 @@ module Ddb #:nodoc:
           end
 
           def userstamp_set_creator_attribute
-            userstamp_apply_stamper(:userstamp_creator, self.creator_attribute)
+            userstamp_apply_stamper(:creator, self.creator_attribute)
           end
 
           def userstamp_set_updater_attribute
-            userstamp_apply_stamper(:userstamp_updater, self.updater_attribute)
+            userstamp_apply_stamper(:updater, self.updater_attribute)
           end
 
           def userstamp_set_deleter_attribute
-            userstamp_apply_stamper(:userstamp_deleter, self.deleter_attribute)
+            userstamp_apply_stamper(:deleter, self.deleter_attribute)
             save
           end
 
