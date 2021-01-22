@@ -16,10 +16,15 @@ created, updated, or deleted by 'stampers'.
 Installation
 ------------
 
-Installation of the plugin can be done by adding it to your Gemfile:
+Installation of the plugin can be done using the built in Rails plugin script. Issue the following
+command from the root of your Rails application:
 
-    gem 'userstamp', :git => "https://github.com/coupa/userstamp.git", branch: 'master'
-    
+    $ ./script/rails plugin install git://github.com/delynn/userstamp.git
+
+or add it to your Gemfile:
+
+    gem 'userstamp'
+
 and run `bundle install` to install the new dependency.
 
 Once installed you will need to restart your application for the plugin to be loaded into the Rails
@@ -150,12 +155,31 @@ completely customized. Here's an quick example:
 
 ```ruby
 class Post < ActiveRecord::Base
-  acts_as_stampable :stamper_class_name => :person
+  acts_as_stampable :stamper_class_name => :person,
+                    :creator_attribute  => :create_user,
+                    :updater_attribute  => :update_user,
+                    :deleter_attribute  => :delete_user
 end
+```
+
+If you are upgrading your application from the old version of Userstamp, there is a compatibility
+mode to have the plug-in use the old "_by" columns by default. To enable this mode, add the
+following line to the Rails.root/config/initializers/userstamp.rb file:
+
+```ruby
+Ddb::Userstamp.compatibility_mode = true
 ```
 
 If you are having a difficult time getting the Userstamp plug-in to work, I recommend you checkout
 the sample application that I created. You can find this application on [GitHub](http://github.com/delynn/userstamp_sample)
+
+Uninstall
+---------
+
+Uninstalling the plugin can be done using the built in Rails plugin script. Issue the following
+command from the root of your application:
+
+    script/plugin remove userstamp
 
 
 Documentation
@@ -170,7 +194,15 @@ Running Unit Tests
 There are extensive unit tests in the "test" directory of the plugin. These test can be run
 individually by executing the following command from the userstamp directory:
 
-    rake
+    ruby test/compatibility_stamping_test.rb
+    ruby test/stamping_test.rb
+    ruby test/userstamp_controller_test.rb
+
+
+Bugs & Feedback
+---------------
+
+Bug reports and feedback are welcome via [GitHub Issues](https://github.com/delynn/userstamp/issues). I also encouraged everyone to clone the git repository and make modifications--I'll be more than happy to merge any changes from other people's branches that would be beneficial to the whole project.
 
 
 Credits and Special Thanks

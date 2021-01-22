@@ -6,10 +6,15 @@ module Ddb
       end
 
       module InstanceMethods
-        def userstamps(include_deleted_by = false)
-          column(:created_by_id, :integer)
-          column(:updated_by_id, :integer)
-          column(:deleted_by_id, :integer) if include_deleted_by
+        def userstamps(options = {})
+          # add backwards compatibility support
+          options = {include_deleted_by: options} if (options === true || options === false)
+
+          append_id_suffix = options[:include_id] ? '_id' : ''
+
+          column(Ddb::Userstamp.compatibility_mode ? "created_by#{append_id_suffix}".to_sym : :creator_id, :integer)
+          column(Ddb::Userstamp.compatibility_mode ? "updated_by#{append_id_suffix}".to_sym : :updater_id, :integer)
+          column(Ddb::Userstamp.compatibility_mode ? "deleted_by#{append_id_suffix}".to_sym : :deleter_id, :integer) if options[:include_deleted_by]
         end
       end
     end

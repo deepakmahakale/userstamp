@@ -2,8 +2,8 @@
 first_post:
   id: 1
   title: First Post
-  created_by_id: 1
+  creator_id: 1
 second_post:
   id: 2
   title: Second Post
-  created_by_id: 1
+  creator_id: 1

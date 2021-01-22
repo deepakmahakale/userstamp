@@ -1,7 +1,7 @@
 require 'bundler/gem_tasks'
 require 'rake'
 require 'rake/testtask'
-require 'rdoc/task'
+require 'rake/rdoctask'
 
 desc 'Default: run unit tests.'
 task :default => :test
@@ -9,8 +9,7 @@ task :default => :test
 desc 'Test the userstamp plugin.'
 Rake::TestTask.new(:test) do |t|
   t.libs << 'lib'
-  all_tests = FileList['test/**/*_test.rb']
-  t.test_files = all_tests
+  t.pattern = 'test/**/*_test.rb'
   t.verbose = true
 end
 

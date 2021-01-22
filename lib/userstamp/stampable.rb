@@ -1,7 +1,19 @@
-require 'ostruct'
-
 module Ddb #:nodoc:
   module Userstamp
+    # Determines what default columns to use for recording the current stamper.
+    # By default this is set to false, so the plug-in will use columns named
+    # <tt>creator_id</tt>, <tt>updater_id</tt>, and <tt>deleter_id</tt>.
+    #
+    # To turn compatibility mode on, place the following line in your environment.rb
+    # file:
+    #
+    #   Ddb::Userstamp.compatibility_mode = true
+    #
+    # This will cause the plug-in to use columns named <tt>created_by</tt>,
+    # <tt>updated_by</tt>, and <tt>deleted_by</tt>.
+    mattr_accessor :compatibility_mode
+    @@compatibility_mode = false
+
     # Extends the stamping functionality of ActiveRecord by automatically recording the model
     # responsible for creating, updating, and deleting the current object. See the Stamper
     # and Userstamp modules for further documentation on how the entire process works.
@@ -19,6 +31,24 @@ module Ddb #:nodoc:
 
           # Which class is responsible for stamping? Defaults to :user.
           class_attribute  :stamper_class_name
+
+          # What column should be used for the creator stamp?
+          # Defaults to :creator_id when compatibility mode is off
+          # Defaults to :created_by when compatibility mode is on
+          class_attribute  :creator_attribute
+
+          # What column should be used for the updater stamp?
+          # Defaults to :updater_id when compatibility mode is off
+          # Defaults to :updated_by when compatibility mode is on
+          class_attribute  :updater_attribute
+
+          # What column should be used for the deleter stamp?
+          # Defaults to :deleter_id when compatibility mode is off
+          # Defaults to :deleted_by when compatibility mode is on
+          class_attribute  :deleter_attribute
+
+          # Not all models in Enterprise have userstamps
+          # self.stampable
         end
       end
 
@@ -28,37 +58,41 @@ module Ddb #:nodoc:
         # method to use. Here's an example:
         #
         #   class Post < ActiveRecord::Base
-        #     stampable :stamper_class_name => :person
+        #     stampable :stamper_class_name => :person,
+        #               :creator_attribute  => :create_user,
+        #               :updater_attribute  => :update_user,
+        #               :deleter_attribute  => :delete_user
         #   end
         #
         # The method will automatically setup all the associations, and create <tt>before_save</tt>
         # and <tt>before_create</tt> filters for doing the stamping.
         def stampable(options = {})
-          stamper_class_name = options.fetch(:stamper_class_name, :user).to_sym
+          defaults  = {
+                        :stamper_class_name => :user,
+                        :creator_attribute  => Ddb::Userstamp.compatibility_mode ? :created_by : :creator_id,
+                        :updater_attribute  => Ddb::Userstamp.compatibility_mode ? :updated_by : :updater_id,
+                        :deleter_attribute  => Ddb::Userstamp.compatibility_mode ? :deleted_by : :deleter_id
+                      }.merge(options)
 
-          self.stamper_class_name = stamper_class_name
+          self.stamper_class_name = defaults[:stamper_class_name].to_sym
+          self.creator_attribute  = defaults[:creator_attribute].to_sym
+          self.updater_attribute  = defaults[:updater_attribute].to_sym
+          self.deleter_attribute  = defaults[:deleter_attribute].to_sym
 
           class_eval do
-            # created_by
-            belongs_to :created_by, :class_name => self.stamper_class_name.to_s.singularize.camelize,
-                                    :foreign_key => :created_by_id
-            alias_method :creator,  :created_by
-            alias_method :creator=, :created_by=
-            before_create :userstamp_set_creator_attribute
-
-            # updated_by
-            belongs_to :updated_by, :class_name => self.stamper_class_name.to_s.singularize.camelize,
-                                    :foreign_key => :updated_by_id
-            alias_method :updater,  :updated_by
-            alias_method :updater=, :updated_by=
-            before_save :userstamp_set_updater_attribute
-
+            belongs_to :creator, :class_name => self.stamper_class_name.to_s.singularize.camelize,
+                                 :foreign_key => self.creator_attribute
+                                 
+            belongs_to :updater, :class_name => self.stamper_class_name.to_s.singularize.camelize,
+                                 :foreign_key => self.updater_attribute
+                                 
+            before_save     :set_updater_attribute
+            before_create   :set_creator_attribute
+                                 
             if defined?(Caboose::Acts::Paranoid)
-              belongs_to :deleted_by, :class_name => self.stamper_class_name.to_s.singularize.camelize,
-                                      :foreign_key => :deleted_by_id
-              alias_method :deleter,  :deleted_by
-              alias_method :deleter=, :deleted_by=
-              before_destroy :userstamp_set_deleter_attribute
+              belongs_to :deleter, :class_name => self.stamper_class_name.to_s.singularize.camelize,
+                                   :foreign_key => self.deleter_attribute
+              before_destroy  :set_deleter_attribute
             end
           end
         end
@@ -84,41 +118,29 @@ module Ddb #:nodoc:
 
       module InstanceMethods #:nodoc:
         private
-          def userstamp_has_stamper?
+          def has_stamper?
             !self.class.stamper_class.nil? && !self.class.stamper_class.stamper.nil? rescue false
           end
 
-          def userstamp_set_creator_attribute
-            userstamp_apply_stamper(:created_by, :created_by_id)
-          end
-
-          def userstamp_set_updater_attribute
-            userstamp_apply_stamper(:updated_by, :updated_by_id)
-          end
-
-          def userstamp_set_deleter_attribute
-            if userstamp_apply_stamper(:deleted_by, :deleted_by_id)
-              save
+          def set_creator_attribute
+            return unless self.record_userstamp
+            if self.creator_attribute && respond_to?(self.creator_attribute.to_sym) && has_stamper?
+              self.send("#{self.creator_attribute}=".to_sym, self.class.stamper_class.stamper)
             end
           end
 
-          # Returns true if stampler applied, else nil
-          def userstamp_apply_stamper(association, attribute)
-            # Do nothing if the attribute does not exist in the table or
-            # we are not recording userstamps.
-            return nil if !self.record_userstamp || !self.class.columns_hash.has_key?(attribute.to_s)
+          def set_updater_attribute
+            return unless self.record_userstamp
+            if self.updater_attribute && respond_to?(self.updater_attribute.to_sym) && has_stamper?
+              self.send("#{self.updater_attribute}=".to_sym, self.class.stamper_class.stamper)
+            end
+          end
 
-            if userstamp_has_stamper?
-              stamper_class = self.class.stamper_class
-              stamper = stamper_class.stamper
-              setter = if stamper.is_a?(stamper_class)
-                association
-              else
-                attribute
-              end
-
-              self.send("#{setter}=", stamper)
-              true   # Return true to indicate we set the stamper
+          def set_deleter_attribute
+            return unless self.record_userstamp
+            if self.deleter_attribute && respond_to?(self.deleter_attribute.to_sym) && has_stamper?
+              self.send("#{self.deleter_attribute}=".to_sym, self.class.stamper_class.stamper)
+              save
             end
           end
         #end private

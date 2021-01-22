@@ -2,10 +2,10 @@
 delynn:
   id: 1
   name: DeLynn
-  created_by_id: 1
-  updated_by_id: 1
+  creator_id: 1
+  updater_id: 1
 nicole:
   id: 2
   name: Nicole
-  created_by_id: 2
-  updated_by_id: 2
+  creator_id: 2
+  updater_id: 2
