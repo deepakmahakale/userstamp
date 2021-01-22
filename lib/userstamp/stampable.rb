@@ -47,7 +47,7 @@ module Ddb #:nodoc:
           # Defaults to :deleted_by when compatibility mode is on
           class_attribute  :deleter_attribute
 
-          self.stampable
+          # self.stampable
         end
       end
 
