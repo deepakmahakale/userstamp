@@ -124,7 +124,7 @@ module Ddb #:nodoc:
 
       module InstanceMethods #:nodoc:
         private
-          def has_stamper?
+          def userstamp_has_stamper?
             !self.class.stamper_class.nil? && !self.class.stamper_class.stamper.nil? rescue false
           end
 
